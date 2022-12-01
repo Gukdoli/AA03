@@ -1,0 +1,235 @@
+<!DOCTYPE html> 
+<head>  
+  <meta charset="utf-8">
+  <title>plotly.js Project: Real time signals from nano 33 ble sensor</title> 
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.1/socket.io.js"></script>  
+
+  <script src="gauge.min.js"></script>
+
+  <style>body{padding:0;margin:30;background:#fff}</style>
+</head>
+
+<body>  <!-- style="width:100%;height:100%"> -->
+    <!-- Plotly chart will be drawn inside this DIV -->
+    <h1 align="center"> Real-time Weather Station from nano 33 BLE sensors </h1>
+    <!-- 1st gauge -->
+
+    <!-- <div id="console"> </div> -->
+    <h3 align="center"> on Time: <span id="time"> </span> </h3> 
+    <div id="myDiv"></div>
+    <hr>
+
+    <script>
+      /* JAVASCRIPT CODE GOES HERE */
+      var streamPlot = document.getElementById('myDiv');
+      var ctime = document.getElementById('time');
+      var tArray = [], // time of data arrival
+        aX = [], // value of sensor 1 : temperature
+        aY = [], // value of sensor 2 : humidity
+        aZ = [], // value of sensor 3 : luminosity
+        y4Track = [], // value of sensor 4 : pressure
+        numPts = 50, // number of data points in x-axis                
+        dtda = [],  // 1 x 4 array : [date, data1, data2, data3] from sensors
+        aX = -1,
+        aY = -1,
+        aZ = -1,
+        preS = -1,
+        initFlag = true;
+
+    var socket = io.connect('http://localhost:3000'); // port = 3000  
+    socket.on('connect', function () {
+        socket.on('message', function (msg) {
+            // initial plot
+            if(msg[0]!='' && initFlag){
+                dtda[0]=msg[0];
+                dtda[1]=parseFloat(msg[1]);  // temperature
+                dtda[2]=parseFloat(msg[2]);  // Humidity
+                dtda[3]=parseInt(msg[3]);    // Luminosity
+                dtda[4]=parseFloat(msg[4]);  // Pressure
+                init();
+                initFlag=false;
+            }
+            // console.log(msg[0]);
+            // console.log(parseFloat(msg[1]) + ', ' + parseFloat(msg[2]));
+            // Convert value to numbers
+            dtda[0]=msg[0];
+            dtda[1] = parseFloat(msg[1]); 
+            dtda[2] = parseFloat(msg[2]);
+            dtda[3] = parseInt(msg[3]);
+            dtda[4] = parseFloat(msg[4]);
+
+            // Only when any of temperature or Luminosity is different from the previous one, the screen is redrawed.
+            if (dtda[1] != aX || dtda[2] != aY || dtda[3] != aZ || dtda[4] != preS ) {  // any change?
+                aX = dtda[1];  
+                aY = dtda[2];
+                aZ = dtda[3];
+                preS = dtda[4];
+                                
+                // when new data is coming, keep on streaming            
+                ctime.innerHTML = dtda[0];
+
+                //nextPt();
+                tArray = tArray.concat(dtda[0]);
+                tArray.splice(0, 1);  // remove the oldest data
+                y1Track = y1Track.concat(dtda[1]);
+                y1Track.splice(0, 1); // remove the oldest data
+                y2Track = y2Track.concat(dtda[2]);
+                y2Track.splice(0, 1);            
+                y3Track = y3Track.concat(dtda[3]); // lux
+                y3Track.splice(0, 1);
+                y4Track = y4Track.concat(dtda[4]); // pres
+                y4Track.splice(0, 1);
+
+                var update = {
+                    x:  [tArray, tArray, tArray, tArray],
+                    y:  [y1Track, y2Track, y3Track, y4Track]
+                }
+
+                Plotly.update(streamPlot, update);
+            }
+
+      });
+    }); 
+
+    function init() {  // initial screen ()
+        // starting point : first data (temp, lux)
+        for ( i = 0; i < numPts; i++) {
+            tArray.push(dtda[0]);  // date 
+            y1Track.push(dtda[1]);  // sensor 1 (temp)
+            y2Track.push(dtda[2]);  // sensor 2 (humi)
+            y3Track.push(dtda[3]);  // sensor 3 (lux)
+            y4Track.push(dtda[4]);
+        }
+
+        Plotly.plot(streamPlot, data, layout);
+    }
+    
+    // data
+    var data = [{
+        x : tArray,
+        y : y1Track,
+        name : 'temperature',
+        mode: "markers+lines",  // "lines+markers"
+        line: {
+            color: "#1f77b4", 
+            width: 1
+        }, 
+        marker: {
+            color: "rgb(255, 0, 0)", 
+            size: 6, 
+            line: {
+              color: "black", 
+              width: 0.5
+          }
+      }
+  }, {
+    x : tArray,
+    y : y2Track,
+    name : 'humidity',
+    xaxis: 'x2',
+    yaxis : 'y2',
+        mode: "markers+lines",  // "lines+markers"
+        line: {
+            color: "#1f77b4", 
+            width: 1
+        }, 
+        marker: {
+            color: "rgb(0, 0, 255)", 
+            size: 6, 
+            line: {
+              color: "black", 
+              width: 0.5
+          }
+      }
+  }, {
+    x : tArray,
+    y : y3Track,
+    name : 'luminosity',
+    xaxis: 'x3',
+    yaxis : 'y3',
+        mode: "markers+lines",  // "lines+markers"
+        line: {
+            color: "#1f77b4", 
+            width: 1
+        }, 
+        marker: {
+            color: "rgb(0, 255, 0)", 
+            size: 6, 
+            line: {
+              color: "black", 
+              width: 0.5
+          }
+      }
+  },{
+    x : tArray,
+    y : y4Track,
+    name : 'pressure',
+    xaxis: 'x4',
+    yaxis : 'y4',
+        mode: "markers+lines",  // "lines+markers"
+        line: {
+            color: "#1f77b4", 
+            width: 1
+        }, 
+        marker: {
+            color: "rgb(255, 255, 0)", 
+            size: 6, 
+            line: {
+              color: "black", 
+              width: 0.5
+          }
+      }
+  }];
+
+  var layout = {
+    xaxis : {
+        title : 'time',
+        domain : [0, 1]
+    },
+    yaxis : {
+        title : 'temp (°C)',
+        domain : [0, 0.2],
+        range : [-30, 50]
+    },
+    xaxis2 : {
+        title : '',
+        domain : [0, 1],
+        position : 0.35,
+        showticklabels: false
+    },
+    yaxis2 : {
+        title : 'humi (%)',
+        domain : [0.2, 0.4],
+        range : [0, 100]
+    },
+    xaxis3 : {
+        title : '',
+        domain : [0, 1],
+        position : 0.7,
+        showticklabels: false
+    },
+    yaxis3 : {
+        title : 'lumi (lux)',
+        domain : [0.4, 0.6],
+        range : [0, 500]
+    },
+    xaxis4 : {
+        title : '',
+        domain : [0, 1],
+        position : 0.7,
+        showticklabels: false
+    },
+    yaxis4 : {
+        title : 'pres(mbar)',
+        domain : [0.6, 1],
+        range : [500, 1500]
+    }
+};
+
+    // gauge configuration
+   
+
+</script>
+</body>
+</html>
